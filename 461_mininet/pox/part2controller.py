@@ -11,14 +11,14 @@ class Part2Firewall(object):
 
         log.info("Installing Part2 firewall rules")
 
-        # Allow ARP
+        
         msg = of.ofp_flow_mod()
         msg.priority = 100
         msg.match.dl_type = ethernet.ARP_TYPE
         msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
         connection.send(msg)
 
-        # Allow ICMP
+     
         msg = of.ofp_flow_mod()
         msg.priority = 90
         msg.match.dl_type = ethernet.IP_TYPE
@@ -26,7 +26,7 @@ class Part2Firewall(object):
         msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
         connection.send(msg)
 
-        # Drop all other IPv4
+       
         msg = of.ofp_flow_mod()
         msg.priority = 10
         msg.match.dl_type = ethernet.IP_TYPE
