@@ -4,11 +4,12 @@ from pox.lib.packet import ethernet, ipv4
 
 log = core.getLogger()
 
-# ---- CONSTANTS ----
-CORE_DPID = 5
+# -------- CONSTANTS --------
+CORE_DPID = 5   # cores21
 
 HNOTRUST_IP = "172.16.10.100"
-SERV1_IP = "10.0.4.10"
+SERV1_IP    = "10.0.4.10"
+
 
 class Part3Controller(object):
     def __init__(self, connection):
@@ -19,25 +20,33 @@ class Part3Controller(object):
         log.info("Switch %s connected", dpid)
 
         if dpid == CORE_DPID:
-            log.info("Configuring CORE switch")
+            log.info("Configuring CORE switch (cores21)")
             self.install_core_rules()
         else:
             log.info("Configuring ACCESS switch (flood)")
             self.install_flood_rule()
 
-    # ---------------- ACCESS SWITCH ----------------
+    # ================= ACCESS SWITCH =================
     def install_flood_rule(self):
         msg = of.ofp_flow_mod()
         msg.priority = 1
         msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
         self.connection.send(msg)
 
-    # ---------------- CORE SWITCH ----------------
+    # ================= CORE SWITCH =================
     def install_core_rules(self):
 
-        # ---- SECURITY RULES ----
+        # ---------- ALLOW ARP (SAFETY RULE) ----------
+        # Core must allow ARP to reach correct subnets
+        msg = of.ofp_flow_mod()
+        msg.priority = 400
+        msg.match.dl_type = ethernet.ARP_TYPE
+        msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
+        self.connection.send(msg)
 
-        # Block ICMP from hnotrust to internal + server
+        # ---------- SECURITY POLICIES ----------
+
+        # Block ICMP from hnotrust to internal hosts + server
         internal_targets = [
             "10.0.1.0/24",
             "10.0.2.0/24",
@@ -54,7 +63,7 @@ class Part3Controller(object):
             msg.match.nw_dst = dst
             self.connection.send(msg)
 
-        # Block ALL IP from hnotrust to serv1
+        # Block ALL IP traffic from hnotrust to serv1
         msg = of.ofp_flow_mod()
         msg.priority = 250
         msg.match.dl_type = ethernet.IP_TYPE
@@ -62,8 +71,8 @@ class Part3Controller(object):
         msg.match.nw_dst = SERV1_IP
         self.connection.send(msg)
 
-        # ---- ROUTING RULES ----
-        # Ports on core:
+        # ---------- STATIC ROUTING (CORE ONLY) ----------
+        # Port mapping on cores21:
         # 1 → s1 (10.0.1.0/24)
         # 2 → s2 (10.0.2.0/24)
         # 3 → s3 (10.0.3.0/24)
@@ -87,6 +96,7 @@ class Part3Controller(object):
             self.connection.send(msg)
 
 
+# ================= LAUNCH =================
 def launch():
     def start_switch(event):
         Part3Controller(event.connection)
