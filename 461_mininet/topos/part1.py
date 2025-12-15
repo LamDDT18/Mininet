@@ -4,6 +4,7 @@ from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.util import dumpNodeConnections
 from mininet.cli import CLI
+from mininet.node import Controller  
 
 
 class part1_topo(Topo):
@@ -28,8 +29,12 @@ class part1_topo(Topo):
 topos = {"part1": part1_topo}
 
 if __name__ == "__main__":
-    t = part1_topo()
-    net = Mininet(topo=t, controller=None)
+    topo = part1_topo()
+    net = Mininet(topo=topo, controller=Controller)  
     net.start()
+
+    print("\nDumping host connections")
+    dumpNodeConnections(net.hosts)
+
     CLI(net)
     net.stop()
